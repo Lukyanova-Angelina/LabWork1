@@ -31,7 +31,7 @@ struct Pixel{
     uint8_t blue;
     uint8_t green;
     uint8_t red;
-}
+};
 
 
 
@@ -44,24 +44,28 @@ public:
     ~Matrix();
     // надо придумать как переделать дату в нормальный массив !!!!!!!!!!!!!!!!!!
     uint8_t returnImageData();
-}
+};
 
 class Image{
 private: 
-	BMPFileHeader fileHeader;
-    BMPInfoHeader infoHeader;
-    uint8_t* imageData;
+    uint8_t* _imageData;
     int _ImageWidth, _ImageHeight, _ImageBitDepth;
 public:
 	Image(std::string filename);
 	~Image();
 	void loadBMP(std::string filename);
-	void saveBMP(std::string filename, uint8_t ImageChangedData, int width, int height);
+	void saveBMP(std::string filenameoutput, uint8_t* ImageChangedData, int width, int height, int bitDepth);
 
 
 	// setters 
 	void setWidth(int width);
 	void setHeight(int height);
-}
+	void setBitDepth(int bitDepth);
+	// getters
+	int getWidth();
+	int getHeight();
+	int getBitDepth();
+	uint8_t* getImageData();
+};
 
 #endif
