@@ -45,6 +45,7 @@ private:
     int32_t _height;
     uint16_t _bitCount;
     uint8_t* imageData;
+    Pixel* Data;
     BMPFileHeader fileheader;
     BMPInfoHeader infoheader;
 
@@ -53,7 +54,9 @@ public:
     ~Picture();
 
     void loadimage();
-
+    void saveData();
+    void saveImage(int32_t width, int32_t height);
+    void rotateRight();
     //getters
     int32_t getHeight();
     int32_t getWidth();

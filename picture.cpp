@@ -20,24 +20,96 @@ Picture::Picture(std::string filename)
     if(getBit_count() == 24)
     {
     	rowSize = ((getWidth() * 3 + 3) & ~3);
+        std::cout<<"24";
     }
     else
     {
     	rowSize = getWidth() * 4;
+        std::cout<<"32";
     }
     imageData = new uint8_t[rowSize * _height];
-
-
-
-	loadimage();
+    file.seekg(fileheader.offsetData);
+    for (int i = 0; i < _height; ++i) {
+        file.read(reinterpret_cast<char*>(imageData + i * rowSize), rowSize);
+    }
+    file.close();
+    loadimage();
+    saveImage(infoheader.width, infoheader.height);
+	
 }
 Picture::~Picture(){
-	delete imageData;
+	delete[] imageData;
 }
 
-void Picture::loadimage(){
+void Picture::loadimage() {
+    Data = new Pixel[getWidth() * getHeight()];
+    
+    for (int i = 0; i < getHeight(); i++) { 
+        for (int j = 0; j < getWidth(); j++) {
+            int index = (i * getWidth() + j);
+            Data[index].b = imageData[index * 3];
+            Data[index].g = imageData[index * 3 + 1];
+            Data[index].r = imageData[index * 3 + 2];
+        }
+    }
+    saveData();
 }
 
+void Picture::saveData() {
+    int rowSize;
+    if (getBit_count() == 24) {
+        rowSize = ((getWidth() * 3 + 3) & ~3); 
+    } else {
+        rowSize = getWidth() * 4; 
+    }
+    for (int i = 0; i < getHeight(); i++) {
+        for (int j = 0; j < getWidth(); j++) {
+            int index = (i * getWidth() + j);
+            int pixelIndex = i * rowSize + j * ((getBit_count() == 24) ? 3 : 4);
+            imageData[pixelIndex]     = Data[index].b; 
+            imageData[pixelIndex + 1] = Data[index].g; 
+            imageData[pixelIndex + 2] = Data[index].r; 
+            
+            if (getBit_count() == 32) {
+                imageData[pixelIndex + 3] = 255; 
+            }
+        }
+    }
+}
+void Picture::rotateRight(){
+
+}
+void Picture::saveImage(int32_t width, int32_t height) {
+    std::ofstream output("output.bmp", std::ios::binary);
+
+    if (!output.is_open()) {
+        std::cerr << "Не удалось создать файл." << std::endl;
+        return;
+    }
+
+    BMPFileHeader fileHeader_output;
+    BMPInfoHeader infoHeader_output;
+    fileHeader_output = fileheader;
+    infoHeader_output = infoheader;
+    infoHeader_output.width = width;
+    infoHeader_output.height = height;
+    output.write(reinterpret_cast<const char*>(&fileHeader_output), sizeof(BMPFileHeader));
+    output.write(reinterpret_cast<const char*>(&infoHeader_output), sizeof(BMPInfoHeader));
+    int rowSize;
+    if(getBit_count() == 24)
+    {
+        rowSize = ((width * 3 + 3) & ~3);
+    }
+    else
+    {
+        rowSize = width * 4;
+    }
+    for (int i = 0; i < abs(height); ++i) {
+        output.write(reinterpret_cast<const char*>(imageData + i * rowSize), rowSize);
+    }
+
+    output.close();
+}
     //getters
 int32_t Picture::getHeight()
 {
@@ -68,5 +140,6 @@ void Picture::setBit_count(uint16_t b)
 
 int main()
 {
+    Picture a = Picture("hello.bmp");
 	return 0;
 }
