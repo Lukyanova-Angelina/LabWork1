@@ -1,4 +1,5 @@
 #include "picture.h"
+#include <cmath>
 Picture::Picture(std::string filename)
 {
     std::ifstream file(filename, std::ios::binary);
@@ -28,7 +29,8 @@ Picture::Picture(std::string filename)
         }
         file.ignore(padding);
     }
-    rotateLeft();
+    //rotateLeft();
+    Gauss(50, 3);
     saveImage();
     file.close();
 }
@@ -62,6 +64,65 @@ void Picture::rotateLeft(){
     }
     delete[] mass;
 }
+float* Picture::generateGaussianFilter(int radius, float sigma) {
+    int size = 2 * radius + 1;
+    double PI = 3.141592653589793;
+    float* filter = new float[size * size];
+    float sum = 0.0f;
+    for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < size; ++j) {
+            int x = i - radius;
+            int y = j - radius;
+            float value = std::exp(-(x * x + y * y) / (2 * sigma * sigma));
+            filter[i * size + j] = value;
+            sum += value;
+        }
+    }
+
+    for (int i = 0; i < size * size; ++i) {
+        filter[i] /= sum;
+    }
+
+    return filter;
+}
+
+void Picture::Gauss(int radius, float sigma) {
+    Pixel* mass = new Pixel[getWidth() * getHeight()];
+
+    float* filter = generateGaussianFilter(radius, sigma);
+    for (int i = 0; i < getHeight(); ++i) {
+        for (int j = 0; j < getWidth(); ++j) {
+            Pixel mainpixel = {0, 0, 0};
+            //float totalweight = 0;
+            for (int k = -radius; k <= radius; k++) {
+                for (int l = -radius; l <= radius; l++) {
+                    int x = j + l;
+                    int y = i + k;
+
+                    if (x >= 0 && x < getWidth() && y >= 0 && y < getHeight()) {
+                        Pixel otherpixel = Data[y * getWidth() + x];
+                        float weight = filter[(k + radius) * (2 * radius + 1) + (l + radius)];
+                        mainpixel.r += otherpixel.r * weight;
+                        mainpixel.g += otherpixel.g * weight;
+                        mainpixel.b += otherpixel.b * weight;
+                        //totalweight += weight;
+                    }
+                }
+            }
+
+            mass[i * getWidth() + j] = mainpixel;
+        }
+    }
+
+    for (int i = 0; i < getHeight(); ++i) {
+        for (int j = 0; j < getWidth(); ++j) {
+            Data[i * getWidth() + j] = mass[i * getWidth() + j];
+        }
+    }
+
+        delete[] mass;
+        delete[] filter;
+    }
 
 void Picture::saveImage(){
     std::ofstream output("output.bmp", std::ios::binary);

@@ -52,7 +52,9 @@ public:
     Picture(std::string filename);
     ~Picture();
     void saveImage();
-
+    void Gauss(int r, float s);
+    float* generateGaussianFilter(int radius, float sigma);
+    
     //void loadimage();
     //void saveData();
     
