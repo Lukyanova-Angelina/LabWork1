@@ -1,10 +1,13 @@
 all: prog
+	./prog
+	rm -rf *.o prog
 	
-prog: *.o
-	g++ *.o -o prog
+prog: picture.o
+	g++ picture.o -o prog
+	
 
-*.o: *.cpp
-	g++ -c *.cpp
+picture.o: picture.cpp
+	g++ -c picture.cpp
 
 
 clean:

@@ -32,9 +32,9 @@ struct BMPInfoHeader {
 
 #pragma pack(pop)
 struct Pixel{
-    uint8_t r{0};
-    uint8_t g{0};
-    uint8_t b{0};
+    float r{0};
+    float g{0};
+    float b{0};
 };
 
 
@@ -50,16 +50,17 @@ private:
 
 public:
     Picture(std::string filename);
+    Picture( Picture& other, int32_t w, int32_t h, uint16_t bc);
     ~Picture();
-    void saveImage();
+    void saveImage(std::string filename = "output.bmp");
     void Gauss(int r, float s);
     float* generateGaussianFilter(int radius, float sigma);
     
     //void loadimage();
     //void saveData();
     
-    void rotateRight();    
-    void rotateLeft();
+    void rotateRight(const Picture& other);    
+    void rotateLeft(const Picture& other);
 
     //getters
     int32_t getHeight();
