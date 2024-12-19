@@ -27,6 +27,127 @@ Picture::Picture(std::string filename)
     _width = infoheader.width;
     _height = abs(infoheader.height);
     _bitCount = infoheader.bitCount;
+<<<<<<< HEAD
+
+    file.seekg(fileheader.offsetData, std::ios::beg);
+    Data = new Pixel[getWidth() * getHeight()];
+    const int padding = (4 - (getWidth() * 3) % 4) % 4;
+    for (int y = 0; y < getHeight(); y++) {
+        for (int x = 0; x < getWidth(); x++) {
+            Pixel& pixel = Data[y * getWidth() + x];
+            file.read(reinterpret_cast<char*>(&pixel.r), 1);
+            file.read(reinterpret_cast<char*>(&pixel.g), 1);
+            file.read(reinterpret_cast<char*>(&pixel.b), 1);
+        }
+        file.ignore(padding);
+    }
+
+    file.close();
+}
+Picture::Picture(Picture& other, int32_t w, int32_t h, uint16_t bc)
+{
+    /*
+    fileheader.fileType = other.fileheader.fileType;
+    fileheader.fileSize = other.fileheader.fileSize;
+    fileheader.reserved1 = other.fileheader.reserved1;
+    fileheader.reserved2 = other.fileheader.reserved2;
+    fileheader.offsetData = other.fileheader.offsetData;
+
+    infoheader.size = other.infoheader.size;
+    infoheader.width = other.infoheader.width;
+    infoheader.height = other.infoheader.height;
+    infoheader.planes = other.infoheader.planes;
+    infoheader.bitCount = other.infoheader.bitCount;
+    infoheader.compression = other.infoheader.compression;
+    infoheader.imageSize = other.infoheader.imageSize;
+    infoheader.xPixelsPerMeter = other.infoheader.xPixelsPerMeter;
+    infoheader.yPixelsPerMeter = other.infoheader.yPixelsPerMeter;
+    infoheader.colorsUsed = other.infoheader.colorsUsed;
+    infoheader.colorsImportant = other.infoheader.colorsImportant;
+    */
+    infoheader = other.infoheader;
+    fileheader = other.fileheader;
+    setWidth(w);
+    setHeight(h);
+    setBit_count(bc);
+    Data = new Pixel[getWidth() * getHeight()];
+    /*
+    std::cout<<w<<" "<<h<<" "<<bc<<std::endl;
+    std::cout<<getWidth()<<" "<<getHeight()<<" "<<getBit_count()<<std::endl;
+    for (int i = 0; i < getHeight(); i++) { 
+        for (int j = 0; j < getWidth(); j++) {
+            int index = (i * getWidth() + j);
+            Data[index] = mass[index];
+        }
+    }
+    */
+    //saveImage(filename);
+}
+
+Picture::~Picture(){
+    delete[] Data;
+}
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void Picture::rotateRight(const Picture& other){
+        for (int i = 0; i < getHeight(); i++) { 
+        for (int j = 0; j < getWidth(); j++) {
+            int index = (i * getWidth() + j);
+            other.Data[(getWidth() - j - 1) * getHeight() + i] = Data[index];
+        }
+    }
+    //Picture* temp = new Picture("rotatedright.bmp", *this, mass, getHeight(), getWidth(), getBit_count());
+    //delete[] mass;
+}
+
+
+
+void Picture::rotateLeft(const Picture& other){
+    for (int i = 0; i < getHeight(); i++) { 
+        for (int j = 0; j < getWidth(); j++) {
+            int index = (i * getWidth() + j);
+            other.Data[j * getHeight() + (getHeight() - 1 - i)] = Data[index];
+        }
+    }
+    //Picture* temp = new Picture("booooooooo.bmp", *this, mass, getHeight(), getWidth(), getBit_count());
+    //delete[] mass;
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+float* Picture::generateGaussianFilter(int radius, float sigma) {
+
+    int size = 2 * radius + 1;
+    //double PI = 3.141592653589793;
+    float* filter = new float[size * size];
+    float sum = 0;
+    for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < size; ++j) {
+            int x = i - radius;
+            int y = j - radius;
+            float value = 1 /(2 * PI * sigma * sigma) * std::exp(-(x * x + y * y) / (2 * sigma * sigma));
+            filter[i * size + j] = value;
+            sum += value;
+        }
+    }
+    float Temp = 0;
+    for (int i = 0; i < size * size; ++i) {
+        filter[i] /= sum;
+        Temp += filter[i];
+    }
+    ;
+
+    return filter;
+
+=======
 
     file.seekg(fileheader.offsetData, std::ios::beg);
     Data = new Pixel[getWidth() * getHeight()];
@@ -151,6 +272,7 @@ void Picture::Gauss(int radius, float sigma) {
             mass[index] = mainp;
         }
     }
+>>>>>>> ef82c78 (Gauss corrected)
 
     for (int i = 0; i < getHeight(); ++i) {
         for (int j = 0; j < getWidth(); ++j) {
@@ -161,6 +283,56 @@ void Picture::Gauss(int radius, float sigma) {
     delete[] mass; 
     delete[] filter; 
 }
+<<<<<<< HEAD
+void Picture::Gauss(int radius, float sigma) {
+    float *filter = generateGaussianFilter(radius, sigma);
+    Pixel *mass = new Pixel[getWidth() * getHeight()];
+
+    for (int i = 0; i < getHeight(); i++) {
+        for (int j = 0; j < getWidth(); j++) {
+            int index = i * getWidth() + j;
+            Pixel mainp {0, 0, 0};
+            float totalWeight = 0.0f;
+
+            for (int k = -radius; k <= radius; k++) {
+                for (int l = -radius; l <= radius; l++) {
+                    int x = j + l;
+                    int y = i + k;
+
+                    // Проверка границ
+                    if (x >= 0 && x < getWidth() && y >= 0 && y < getHeight()) {
+                        float weight = filter[(k + radius) * (2 * radius + 1) + (l + radius)];
+                        mainp.r += Data[y * getWidth() + x].r * weight;
+                        mainp.g += Data[y * getWidth() + x].g * weight;
+                        mainp.b += Data[y * getWidth() + x].b * weight;
+                        totalWeight += weight;
+                    }
+                }
+            }
+
+            // Нормализация цвета
+            if (totalWeight > 0) {
+                mainp.r /= totalWeight;
+                mainp.g /= totalWeight;
+                mainp.b /= totalWeight;
+            }
+
+            mass[index] = mainp;
+        }
+    }
+
+    // Копирование результата обратно в Data
+    for (int i = 0; i < getHeight(); ++i) {
+        for (int j = 0; j < getWidth(); ++j) {
+            Data[i * getWidth() + j] = mass[i * getWidth() + j];
+        }
+    }
+
+    delete[] mass; // Не забудьте освободить выделенную память
+    delete[] filter; // Освобождение памяти для фильтра
+}
+=======
+>>>>>>> ef82c78 (Gauss corrected)
 void Picture::saveImage(std::string filename){
     std::ofstream output(filename, std::ios::binary);
 
@@ -241,7 +413,16 @@ int main()
     delete c;
     Picture* d = new Picture(a, a.getWidth(), a.getHeight(), a.getBit_count());
     a.Gauss(10, 5);
+<<<<<<< HEAD
+    //d->saveImage("sdfgh.bmp");
     delete d;
     a.saveImage("mqwerthgfghjkkkkkkkkkkkkkkkkkkkkkk.bmp");
+    //a.Gauss(10, 3);
+    //a.rotateRight();
+    //a.saveImage();
+=======
+    delete d;
+    a.saveImage("mqwerthgfghjkkkkkkkkkkkkkkkkkkkkkk.bmp");
+>>>>>>> ef82c78 (Gauss corrected)
     return 0;
 }
