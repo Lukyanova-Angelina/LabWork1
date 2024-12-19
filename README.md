@@ -4,8 +4,8 @@
 ## Contacts
 st128743@stdudent.spbu.ru
 ## Description
-Labwork 1 цorks with 24-bit images.
-write filename, radius and sigma.
+Labwork 1 works with 24-bit images.
+write filePath, radius and sigma.
 ## Build
 make
 ## Run
