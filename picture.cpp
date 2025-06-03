@@ -3,7 +3,9 @@ Lukyanova Angelina st128743@student.spbu.ru
 Labwork1
 */
 #include "picture.h"
-
+#include <thread>
+#include <vector>
+#include <mutex>
 // Constructor to get data from image
 Picture::Picture(std::string filename) {
 	std::ifstream file(filename, std::ios::binary);
@@ -78,36 +80,83 @@ Picture::~Picture() {
 }
 
 void Picture::rotateRight(const Picture& other) {
-	for (int i = 0; i < getHeight(); i++) {
-		for (int j = 0; j < getWidth(); j++) {
-			int index = (i * getWidth() + j);
-			other.Data[(getWidth() - j - 1) * getHeight() + i] = Data[index];
+	int num_threads = std::thread::hardware_concurrency();
+	std::vector<std::thread> threads;
+	auto right_rotator = [this, &other](int start, int end){
+		for (int i = start; i < end; i++) {
+			for (int j = 0; j < getWidth(); j++) {
+				int index = (i * getWidth() + j);
+				other.Data[(getWidth() - j - 1) * getHeight() + i] = Data[index];
+			}
 		}
+	};
+	int row_i_per_thread = getHeight() / num_threads;
+	for (int t = 0; t < num_threads; t++){
+		int start = t * row_i_per_thread;
+		int end = (t == num_threads - 1) ? getHeight() : (t + 1) * row_i_per_thread;
+		std::thread thread(right_rotator, start, end);
+		threads.push_back(std::move(thread));
+	}
+	for (auto& thread: threads) {
+		thread.join();
 	}
 }
 
 void Picture::rotateLeft(const Picture& other) {
-	for (int i = 0; i < getHeight(); i++) {
-		for (int j = 0; j < getWidth(); j++) {
-			int index = (i * getWidth() + j);
-			other.Data[j * getHeight() + (getHeight() - 1 - i)] = Data[index];
+	int num_threads = std::thread::hardware_concurrency();
+	std::vector<std::thread> threads;
+	auto left_rotator = [this, &other](int start, int end){
+		for (int i = start; i < end; i++) {
+			for (int j = 0; j < getWidth(); j++) {
+				int index = (i * getWidth() + j);
+				other.Data[j * getHeight() + (getHeight() - 1 - i)] = Data[index];
+			}
 		}
+	};
+	int row_i_per_thread = getHeight() / num_threads;
+	for (int t = 0; t < num_threads; t++){
+		int start = t * row_i_per_thread;
+		int end = (t == num_threads - 1) ? getHeight() : (t + 1) * row_i_per_thread;
+		std::thread thread(left_rotator, start, end);
+		threads.push_back(std::move(thread));
+	}
+	for (auto& thread: threads) {
+		thread.join();
 	}
 }
 
 // Gauss filter's generation
 void Picture::generateGaussianFilter(float* filter, int radius, float sigma) {
+	int num_threads = std::thread::hardware_concurrency();
+	std::vector<std::thread> threads;
 	int size = 2 * radius + 1;
 	float sum = 0;
-
-	for (int i = 0; i < size; ++i) {
-		for (int j = 0; j < size; ++j) {
-			int x = i - radius;
-			int y = j - radius;
-			float value = 1 / (2 * PI * sigma * sigma) * std::exp(-(x * x + y * y) / (2 * sigma * sigma));
-			filter[i * size + j] = value;
-			sum += value;
+	std::mutex mtx;
+	auto generator = [&](int start, int end){
+		float local_sum = 0;
+		for (int i = start; i < end; ++i) {
+			for (int j = 0; j < size; ++j) {
+				int x = i - radius;
+				int y = j - radius;
+				float value = 1 / (2 * PI * sigma * sigma) * std::exp(-(x * x + y * y) / (2 * sigma * sigma));
+				filter[i * size + j] = value;
+				local_sum += value;
+			}
 		}
+		mtx.lock();
+		sum += local_sum;
+		mtx.unlock();
+		
+	};
+	int row_i_per_thread = size / num_threads;
+	for (int t = 0; t < num_threads; t++){
+		int start = t * row_i_per_thread;
+		int end = (t == num_threads - 1) ? size : (t + 1) * row_i_per_thread;
+		std::thread thread(generator, start, end);
+		threads.push_back(std::move(thread));
+	}
+	for (auto& thread: threads) {
+		thread.join();
 	}
 
 	for (int i = 0; i < size * size; ++i) {
@@ -115,38 +164,53 @@ void Picture::generateGaussianFilter(float* filter, int radius, float sigma) {
 	}
 }
 
+
 void Picture::Gauss(const Picture& other, int radius, float sigma) {
 	float* filter = new float[(2 * radius + 1) * (2 * radius + 1)];
 	generateGaussianFilter(filter, radius, sigma);
+	int num_threads = std::thread::hardware_concurrency();
+	std::vector<std::thread> threads;
+	auto gauss = [&](int start, int end){
+		for (int i = start; i < end; i++) {
+			for (int j = 0; j < getWidth(); j++) {
+				int index = i * getWidth() + j;
+				Pixel mainp{0.0f, 0.0f, 0.0f};
+				float totalWeight = 0.0f;
 
-	for (int i = 0; i < getHeight(); i++) {
-		for (int j = 0; j < getWidth(); j++) {
-			int index = i * getWidth() + j;
-			Pixel mainp{0.0f, 0.0f, 0.0f};
-			float totalWeight = 0.0f;
-
-			for (int k = -radius; k <= radius; k++) {
-				for (int l = -radius; l <= radius; l++) {
-					int x = j + l; // Coords of neighbor pixel
-					int y = i + k;
-					if (x >= 0 && x < getWidth() && y >= 0 && y < getHeight()) {
-						float weight = filter[(k + radius) * (2 * radius + 1) + (l + radius)]; // Weight of neighbor pixel
-						mainp.r += Data[y * getWidth() + x].r * weight;
-						mainp.g += Data[y * getWidth() + x].g * weight;
-						mainp.b += Data[y * getWidth() + x].b * weight;
-						totalWeight += weight;
+				for (int k = -radius; k <= radius; k++) {
+					for (int l = -radius; l <= radius; l++) {
+						int x = j + l; // Coords of neighbor pixel
+						int y = i + k;
+						if (x >= 0 && x < getWidth() && y >= 0 && y < getHeight()) {
+							float weight = filter[(k + radius) * (2 * radius + 1) + (l + radius)]; // Weight of neighbor pixel
+							mainp.r += Data[y * getWidth() + x].r * weight;
+							mainp.g += Data[y * getWidth() + x].g * weight;
+							mainp.b += Data[y * getWidth() + x].b * weight;
+							totalWeight += weight;
+						}
 					}
 				}
+
+				// To remove dark frame because of borders
+				mainp.r /= totalWeight;
+				mainp.g /= totalWeight;
+				mainp.b /= totalWeight;
+
+				other.Data[index] = mainp;
 			}
-
-			// To remove dark frame because of borders
-			mainp.r /= totalWeight;
-			mainp.g /= totalWeight;
-			mainp.b /= totalWeight;
-
-			other.Data[index] = mainp;
 		}
+	};
+	int row_i_per_thread = getHeight() / num_threads;
+	for (int t = 0; t < num_threads; t++){
+		int start = t * row_i_per_thread;
+		int end = (t == num_threads - 1) ? getHeight() : (t + 1) * row_i_per_thread;
+		std::thread thread(gauss, start, end);
+		threads.push_back(std::move(thread));
 	}
+	for (auto& thread: threads) {
+		thread.join();
+	}
+	
 
 	delete[] filter;
 }
